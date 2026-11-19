@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste do Controle</title>
+<style>
+  :root {
+    --bg: #f4f3ef; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #dcdad3;
+    --case: #2a2a2e; --case-edge: #3a3a40; --key-off: .38;
+    --ok: #1f8a4c; --warn: #b7791f; --bad: #c0392b; --accent: #2456c8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --card: #1e1e22; --ink: #ecebe6; --muted: #9a9993; --line: #33333a;
+            --case: #0e0e10; --case-edge: #2c2c33; --ok: #3cc477; --warn: #e0a643; --bad: #ef6b5b; --accent: #6f95ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+  .spacer { flex: 1; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+           padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  svg.case { width: 100%; height: auto; display: block; }
+  .key circle.cap { opacity: var(--key-off); transition: opacity .05s, transform .05s; transform-box: fill-box; transform-origin: center; }
+  .key.down circle.cap { opacity: 1; transform: scale(1.12); }
+  .key circle.ring { fill: none; stroke: transparent; stroke-width: 2.2; }
+  .key.down circle.ring { stroke: #fff; }
+  .key.tested circle.done { opacity: 1; }
+  .key circle.done { fill: var(--ok); opacity: 0; }
+  .key text { fill: #fff; font: 700 6.2px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .warn { margin-top: 10px; padding: 8px 12px; border-radius: 8px; min-height: 38px;
+          background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--ink); display: none; }
+  .warn.show { display: block; }
+  .progress { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .progress b { font-size: 28px; }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-bottom: 12px; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .2s; }
+  ul.check { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 12px; }
+  ul.check li { padding: 3px 0; color: var(--muted); break-inside: avoid; }
+  ul.check li.ok { color: var(--ink); }
+  ul.check li::before { content: "○ "; }
+  ul.check li.ok::before { content: "● "; color: var(--ok); }
+  .stickbox { display: flex; gap: 14px; align-items: center; }
+  .stickbox svg { width: 120px; height: 120px; flex: none; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .log { height: 220px; overflow: auto; font-size: 13px; }
+  .log div { padding: 1px 0; white-space: nowrap; }
+  .log .p { color: var(--accent); }
+  .log .r { color: var(--muted); }
+  .log .w { color: var(--warn); }
+  .notice { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--bad); color: var(--bad); margin-bottom: 16px; display: none; }
+  .row { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+  .row > .card { flex: 1 1 260px; }
+  .help { color: var(--muted); font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Teste do Controle N64 Arcade</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Desconectado</span></div>
+    <div class="spacer"></div>
+    <button id="btnReset">Zerar teste</button>
+    <button id="btnConnect" class="primary">Conectar ao Pico</button>
+  </header>
+
+  <div class="notice" id="noSerial">Este navegador não tem Web Serial. Abra este arquivo no <b>Chrome</b> ou no <b>Edge</b>.</div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Caixa (posições reais do CAD) — aperte cada botão</h2>
+      <svg class="case" id="case" viewBox="-124 -68 248 136" aria-label="Layout da caixa"></svg>
+      <div class="warn" id="multi"></div>
+      <p class="help">Verde no centro = botão já testado. Feche o <span class="mono">monitor.ps1</span> antes de conectar: os dois não podem usar a porta ao mesmo tempo.</p>
+    </section>
+
+    <section class="card">
+      <h2>Checklist</h2>
+      <div class="progress"><b id="count">0</b><span>de 14 botões testados</span></div>
+      <div class="bar"><i id="bar"></i></div>
+      <ul class="check" id="checklist"></ul>
+    </section>
+  </div>
+
+  <div class="row">
+    <section class="card">
+      <h2>Stick enviado ao console</h2>
+      <div class="stickbox">
+        <svg viewBox="-100 -100 200 200" aria-label="Posição do stick">
+          <polygon points="0,-90 64,-64 90,0 64,64 0,90 -64,64 -90,0 -64,-64" fill="none" stroke="currentColor" opacity=".25"/>
+          <line x1="-90" y1="0" x2="90" y2="0" stroke="currentColor" opacity=".15"/>
+          <line x1="0" y1="-90" x2="0" y2="90" stroke="currentColor" opacity=".15"/>
+          <circle id="stickDot" cx="0" cy="0" r="9" fill="var(--accent)"/>
+        </svg>
+        <div class="kv mono">
+          <span>X</span><span id="sx">0</span>
+          <span>Y</span><span id="sy">0</span>
+          <span>D-pad</span><span id="dpad">—</span>
+        </div>
+      </div>
+      <p class="help">Retas: ±80 · diagonais: ±70 por eixo · opostos se anulam.</p>
+    </section>
+
+    <section class="card">
+      <h2>Firmware</h2>
+      <div class="kv">
+        <span>joybus_init</span><span class="mono" id="fwInit">—</span>
+        <span>Pino DATA</span><span class="mono" id="fwData">—</span>
+        <span>Consultas de pak</span><span class="mono" id="fwPak">—</span>
+        <span>Comandos do console</span><span class="mono" id="fwCmd">—</span>
+        <span>Último sinal</span><span class="mono" id="fwSeen">—</span>
+      </div>
+      <p class="help">O firmware manda um sinal de vida a cada 5 s. Com o console ligado, as leituras devem subir a cada sinal (o N64 lê o controle ~60 vezes por segundo). Em vermelho e parado em 0 = o sinal do console não chega ao Pico.</p>
+    </section>
+
+    <section class="card">
+      <h2>Registro</h2>
+      <div class="log mono" id="log"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+// Posições em mm do caixa/n64_arcade_hitbox.scad (origem no centro, y+ = fundo da caixa)
+const KEYS = [
+  ["ESQUERDA", -92,   8, "#55555c", "◀"],
+  ["BAIXO",    -65,  13, "#55555c", "▼"],
+  ["DIREITA",  -38,   6, "#55555c", "▶"],
+  ["CIMA",     -19, -30, "#55555c", "▲"],
+  ["B",         18,   8, "#2E9E44", "B"],
+  ["A",         14, -18, "#2456C8", "A"],
+  ["C_ESQUERDA",45,  16, "#E0B400", "C◀"],
+  ["C_CIMA",    72,  16, "#E0B400", "C▲"],
+  ["C_BAIXO",   42, -10, "#E0B400", "C▼"],
+  ["C_DIREITA", 69, -10, "#E0B400", "C▶"],
+  ["L",         99,  12, "#6a6a72", "L"],
+  ["R",         96, -14, "#6a6a72", "R"],
+  ["Z",         23, -45, "#6a6a72", "Z"],
+  ["START",    -99,  45, "#D42A2A", "START"],
+];
+const NAMES = KEYS.map(k => k[0]);
+const NICE = Object.fromEntries(KEYS.map(k => [k[0], k[4]]));
+const DPAD_MAP = { "^": "CIMA", "v": "BAIXO", "<": "ESQUERDA", ">": "DIREITA" };
+
+const $ = id => document.getElementById(id);
+const svg = $("case");
+const NS = "http://www.w3.org/2000/svg";
+const keyEls = {};
+
+// Caixa 240 x 128 mm, cantos R10
+const body = document.createElementNS(NS, "rect");
+Object.entries({ x: -120, y: -64, width: 240, height: 128, rx: 10, fill: "var(--case)", stroke: "var(--case-edge)", "stroke-width": 1.5 })
+  .forEach(([k, v]) => body.setAttribute(k, v));
+svg.appendChild(body);
+
+for (const [name, x, y, color, label] of KEYS) {
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("class", "key");
+  g.setAttribute("transform", `translate(${x} ${-y})`);
+  const r = name === "START" ? 9 : 12;
+  g.innerHTML = `<circle class="cap" r="${r}" fill="${color}"/><circle class="ring" r="${r}"/>` +
+                `<circle class="done" r="2.2" cy="${r - 4}"/><text dy="-1">${label}</text>`;
+  g.querySelector("text").style.fontSize = label.length > 2 ? "4.6px" : "6.2px";
+  svg.appendChild(g);
+  keyEls[name] = g;
+}
+
+const list = $("checklist");
+const checkEls = {};
+for (const n of NAMES) {
+  const li = document.createElement("li");
+  li.textContent = NICE[n] === n ? n : `${NICE[n]}  ${n.replace("_", " ").toLowerCase()}`;
+  list.appendChild(li); checkEls[n] = li;
+}
+
+let pressed = new Set();
+let tested = new Set();
+try { tested = new Set(JSON.parse(localStorage.getItem("n64-tested") || "[]")); } catch (e) {}
+
+function save() { try { localStorage.setItem("n64-tested", JSON.stringify([...tested])); } catch (e) {} }
+
+function renderTested() {
+  for (const n of NAMES) {
+    keyEls[n].classList.toggle("tested", tested.has(n));
+    checkEls[n].classList.toggle("ok", tested.has(n));
+  }
+  $("count").textContent = tested.size;
+  $("bar").style.width = (tested.size / 14 * 100) + "%";
+}
+renderTested();
+
+function hora() { return new Date().toLocaleTimeString("pt-BR"); }
+function log(text, cls) {
+  const d = document.createElement("div");
+  d.className = cls; d.textContent = `${hora()}  ${text}`;
+  const box = $("log");
+  box.prepend(d);
+  while (box.childElementCount > 300) box.lastChild.remove();
+}
+
+function applyState(now) {
+  for (const n of now) if (!pressed.has(n)) { log(`APERTOU  ${n}`, "p"); tested.add(n); }
+  for (const n of pressed) if (!now.has(n)) log(`soltou   ${n}`, "r");
+  pressed = now;
+  for (const n of NAMES) keyEls[n].classList.toggle("down", now.has(n));
+  const m = $("multi");
+  if (now.size >= 2) {
+    m.textContent = `Apertados ao mesmo tempo: ${[...now].map(n => NICE[n]).join(" + ")}. Se você não apertou esses juntos, pode ser fio encostando.`;
+    m.classList.add("show");
+  } else m.classList.remove("show");
+  renderTested(); save();
+}
+
+// Linha de estado:  X=  80 Y=   0 DPAD=> | A START
+const RE_STATE = /X=\s*(-?\d+)\s+Y=\s*(-?\d+)\s+DPAD=(\S*)\s*\|(.*)$/;
+// Sinal de vida:   [N64 Mechanical V1] joybus_init=0, DATA=GP18, pak_read=0, pak_write=0
+const RE_ALIVE = /joybus_init=(-?\d+),\s*DATA=GP(\d+)(?:,\s*pak_read=(\d+),\s*pak_write=(\d+))?/;
+
+function handleLine(line) {
+  let m = line.match(RE_STATE);
+  if (m) {
+    const x = +m[1], y = +m[2];
+    $("sx").textContent = x; $("sy").textContent = y;
+    $("dpad").textContent = m[3] ? m[3].replace("^", "▲").replace("v", "▼").replace("<", "◀").replace(">", "▶") : "—";
+    const dot = $("stickDot");
+    dot.setAttribute("cx", x); dot.setAttribute("cy", -y);
+    const now = new Set(m[4].trim().split(/\s+/).filter(Boolean));
+    for (const ch of m[3]) if (DPAD_MAP[ch]) now.add(DPAD_MAP[ch]);
+    applyState(now);
+    return;
+  }
+  m = line.match(RE_ALIVE);
+  if (m) {
+    $("fwInit").textContent = m[1] === "0" ? "0 (OK)" : `${m[1]} (ERRO)`;
+    $("fwData").textContent = "GP" + m[2];
+    $("fwPak").textContent = m[3] !== undefined ? `${m[3]} leituras / ${m[4]} escritas` : "firmware antigo";
+    $("fwSeen").textContent = hora();
+    const c = line.match(/cmd_reset=(\d+),\s*cmd_id=(\d+),\s*cmd_read=(\d+),\s*cmd_outros=(\d+)/);
+    if (c) {
+      const el = $("fwCmd");
+      const total = +c[1] + +c[2] + +c[3] + +c[4];
+      el.textContent = `${c[3]} leituras · ${c[2]} identif. · ${c[1]} reset · ${c[4]} outros`;
+      el.style.color = total > 0 ? "var(--ok)" : "var(--bad)";
+      if (window._lastRead !== undefined && +c[3] > window._lastRead) el.title = "console conversando";
+      window._lastRead = +c[3];
+    } else $("fwCmd").textContent = "firmware sem contador";
+  }
+}
+
+let port = null, reader = null, keepReading = false;
+
+function setStatus(on, text) {
+  $("dot").classList.toggle("on", on);
+  $("statusText").textContent = text;
+  $("btnConnect").textContent = on ? "Desconectar" : "Conectar ao Pico";
+}
+
+async function connect() {
+  try {
+    port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x2E8A }] });
+    await port.open({ baudRate: 115200 });
+    await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+  } catch (e) {
+    if (e.name === "NotFoundError") return; // usuário cancelou
+    setStatus(false, e.name === "InvalidStateError" || e.name === "NetworkError"
+      ? "Porta ocupada — feche o monitor.ps1 e tente de novo" : "Erro: " + e.message);
+    port = null; return;
+  }
+  setStatus(true, "Conectado — aguardando dados");
+  log("conectado ao Pico", "r");
+  keepReading = true;
+  readLoop();
+}
+
+async function readLoop() {
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (port && port.readable && keepReading) {
+    reader = port.readable.getReader();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (line) { handleLine(line); if (!$("statusText").textContent.startsWith("Conectado ✓")) setStatus(true, "Conectado ✓"); }
+        }
+      }
+    } catch (e) {
+      log("conexão caiu: " + e.message, "w");
+      break;
+    } finally { try { reader.releaseLock(); } catch (e) {} }
+  }
+  if (keepReading) { // caiu sem o usuário pedir
+    try { await port.close(); } catch (e) {}
+    port = null;
+    setStatus(false, "USB desconectou — reconecte o Pico e clique em Conectar");
+    applyState(new Set());
+  }
+}
+
+async function disconnect() {
+  keepReading = false;
+  try { await reader?.cancel(); } catch (e) {}
+  try { await port?.close(); } catch (e) {}
+  port = null;
+  setStatus(false, "Desconectado");
+  applyState(new Set());
+}
+
+if (!("serial" in navigator)) {
+  $("noSerial").style.display = "block";
+  $("btnConnect").disabled = true;
+} else {
+  navigator.serial.addEventListener("disconnect", e => { if (port && e.target === port) log("Pico desconectado do USB", "w"); });
+}
+
+$("btnConnect").onclick = () => (port ? disconnect() : connect());
+$("btnReset").onclick = () => { tested.clear(); save(); renderTested(); $("log").innerHTML = ""; log("teste zerado", "r"); };
+</script>
+</body>
+</html>

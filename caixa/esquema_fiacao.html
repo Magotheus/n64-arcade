@@ -1,0 +1,394 @@
+<title>Fiação N64 Arcade</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: folha de bancada — cabeçalho curto, desenho técnico grande, tabela de corte e boas práticas lado a lado */
+:root {
+  --bg: #F3F5F2;        /* papel de bancada, leve viés verde-PCB */
+  --panel: #FFFFFF;
+  --ink: #18201D;
+  --muted: #5B6862;
+  --rule: #D5DCD7;
+  --case: #E7ECE8;
+  --case-edge: #8A9A92;
+  --pcb: #1E6B46;
+  --pcb-ink: #EAF5EE;
+  --gnd: #1A1A1A;
+  --accent: #C8102E;    /* vermelho do Start, usado com parcimônia */
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111614; --panel: #18201C; --ink: #E4ECE7; --muted: #9AA9A1; --rule: #2C3832;
+  --case: #1D2622; --case-edge: #5E6F66; --pcb: #2A8A5C; --pcb-ink: #EAF5EE; --gnd: #E8E8E8; --accent: #FF4D5E;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111614; --panel: #18201C; --ink: #E4ECE7; --muted: #9AA9A1; --rule: #2C3832;
+  --case: #1D2622; --case-edge: #5E6F66; --pcb: #2A8A5C; --pcb-ink: #EAF5EE; --gnd: #E8E8E8; --accent: #FF4D5E;
+  color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 38px); letter-spacing: .02em; margin: 0; line-height: 1.05; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; margin: 0 0 10px; letter-spacing: .02em; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+.toggle { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; background: var(--panel); }
+.toggle button { font: 600 13px var(--font-body); border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+.sheet-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: baseline; }
+.viewnote { font-size: 13px; color: var(--muted); }
+.viewnote b { color: var(--ink); }
+.drawing { overflow-x: auto; }
+.drawing svg { display: block; width: 100%; min-width: 760px; height: auto; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+.sw.dash { background: repeating-linear-gradient(90deg, var(--gnd) 0 5px, transparent 5px 8px); }
+
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td.mono { font-family: var(--font-mono); }
+tr.sep td { border-bottom: 2px solid var(--rule); }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin-right: 6px; border: 1px solid rgba(0,0,0,.25); }
+.tot { margin-top: 10px; font-size: 13px; color: var(--muted); }
+ol.tips { margin: 0; padding-left: 20px; display: grid; gap: 9px; }
+ol.tips li::marker { font-family: var(--font-mono); color: var(--muted); }
+ol.tips b { font-weight: 600; }
+.warn { margin-top: 14px; border-left: 3px solid var(--accent); padding: 8px 12px; font-size: 13.5px; background: color-mix(in srgb, var(--accent) 7%, transparent); }
+@media (prefers-reduced-motion: no-preference) { .wire { transition: opacity .15s; } }
+.drawing svg.hl .wire { opacity: .18; }
+.drawing svg.hl .wire.on { opacity: 1; }
+tbody tr { cursor: default; }
+tbody tr:hover td { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">N64 Arcade · caixa V1 · 14 switches MX + Pico</div>
+      <h1>Fiação <span>N64</span> Arcade</h1>
+      <p class="sub">Como ligar cada switch ao Pico dentro da caixa de 240 × 128 mm. Posições, pinos e comprimentos vêm das mesmas medidas do arquivo de CAD.</p>
+    </div>
+    <div class="toggle" role="group" aria-label="Vista do desenho">
+      <button id="v-top" aria-pressed="true">Vista de cima</button>
+      <button id="v-solder" aria-pressed="false">Vista de solda (espelhada)</button>
+    </div>
+  </header>
+
+  <section class="sheet">
+    <div class="sheet-head">
+      <h2 id="view-title">Vista de cima · tampa transparente</h2>
+      <div class="viewnote" id="view-note"></div>
+    </div>
+    <div class="drawing"><svg id="svg" viewBox="0 0 260 162" role="img" aria-label="Esquema de fiação"></svg></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Lista de corte</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Fio</th><th>De</th><th>Para (Pico)</th><th>Comprimento</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+      <p class="tot" id="tot"></p>
+    </section>
+    <section class="card">
+      <h2>Boas práticas</h2>
+      <ol class="tips">
+        <li><b>Barra de pinos + conector Dupont.</b> Solde uma barra de pinos macho no Pico e use um conector fêmea 1×20 nos pinos 1–20 (todos os botões e três GND estão ali) e um 1×2 nos pinos 23–24 (cabo N64). Assim, trocar de Pico vira encaixar e desencaixar.</li>
+        <li><b>Fio 26 ou 28 AWG, flexível.</b> Use as cores da legenda; nos 4 fios amarelos, marque C◀ C▲ C▼ C▶ com fita.</li>
+        <li><b>Dois GND em corrente, não um só.</b> Um fio preto passa de switch em switch na mão esquerda e volta ao pino 3; outro faz o mesmo na direita e volta ao pino 28. Se um ponto soltar, só metade para de funcionar e é fácil achar.</li>
+        <li><b>Folga de 10 cm.</b> Os comprimentos da tabela já somam 10 cm para a tampa abrir ao lado do fundo sem puxar solda.</li>
+        <li><b>Dois feixes com abraçadeira.</b> Agrupe os fios de cada mão nos pontos marcados (◆) antes de chegar ao Pico.</li>
+        <li><b>Termo-retrátil em toda emenda.</b> Principalmente na corrente de GND, que passa perto dos terminais de sinal. Foi assim que o C_DIREITA deu problema antes.</li>
+        <li><b>Teste antes de fechar.</b> Com o USB desligado, confira com o multímetro que nenhum sinal bipa com o GND. Depois rode <code>.\monitor.ps1 -Porta COM7</code> e aperte os 14 botões.</li>
+      </ol>
+      <div class="warn"><b>Cabo N64:</b> só GND (pino 23) e DATA (pino 24). O +3,3 V do cabo fica isolado até a etapa de alimentação.</div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- dados (mesmas medidas do n64_arcade_hitbox.scad) ----------
+  const W = 240, D = 128, R = 10, WALL = 2.5;
+  const COLORS = {
+    dir:   { c: '#F07F1E', name: 'Laranja' },
+    a:     { c: '#2456C8', name: 'Azul' },
+    b:     { c: '#2E9E44', name: 'Verde' },
+    c:     { c: '#E2B400', name: 'Amarelo' },
+    lrz:   { c: '#9AA3A0', name: 'Branco/cinza' },
+    start: { c: '#D42A2A', name: 'Vermelho' },
+    data:  { c: '#8E44AD', name: 'Roxo' },
+  };
+  const KEYS = [
+    { id: 'ESQUERDA',   lab: '◀',  x: -92, y:   8, gp: 4,  pin: 6,  g: 'dir',   side: 'L' },
+    { id: 'BAIXO',      lab: '▼',  x: -65, y:  13, gp: 3,  pin: 5,  g: 'dir',   side: 'L' },
+    { id: 'DIREITA',    lab: '▶',  x: -38, y:   6, gp: 5,  pin: 7,  g: 'dir',   side: 'L' },
+    { id: 'CIMA',       lab: '▲',  x: -19, y: -30, gp: 2,  pin: 4,  g: 'dir',   side: 'L' },
+    { id: 'START',      lab: 'START', x: -99, y: 45, gp: 15, pin: 20, g: 'start', side: 'L' },
+    { id: 'B',          lab: 'B',  x:  18, y:   8, gp: 7,  pin: 10, g: 'b',     side: 'R' },
+    { id: 'A',          lab: 'A',  x:  14, y: -18, gp: 6,  pin: 9,  g: 'a',     side: 'R' },
+    { id: 'C_ESQUERDA', lab: 'C◀', x:  45, y:  16, gp: 13, pin: 17, g: 'c',     side: 'R' },
+    { id: 'C_CIMA',     lab: 'C▲', x:  72, y:  16, gp: 11, pin: 15, g: 'c',     side: 'R' },
+    { id: 'C_BAIXO',    lab: 'C▼', x:  42, y: -10, gp: 12, pin: 16, g: 'c',     side: 'R' },
+    { id: 'C_DIREITA',  lab: 'C▶', x:  69, y: -10, gp: 14, pin: 19, g: 'c',     side: 'R' },
+    { id: 'L',          lab: 'L',  x:  99, y:  12, gp: 9,  pin: 12, g: 'lrz',   side: 'R' },
+    { id: 'R',          lab: 'R',  x:  96, y: -14, gp: 10, pin: 14, g: 'lrz',   side: 'R' },
+    { id: 'Z',          lab: 'Z',  x:  23, y: -45, gp: 8,  pin: 11, g: 'lrz',   side: 'R' },
+  ];
+  // Pico: centro (0, 35), USB para o fundo da caixa (+y)
+  const PICO = { cx: 0, cy: 35, w: 21, l: 51 };
+  const pinXY = n => n <= 20 ? [-8.89, 59.13 - (n - 1) * 2.54] : [8.89, 10.87 + (n - 21) * 2.54];
+  const LEFT_NAMES = ['GP0','GP1','GND','GP2','GP3','GP4','GP5','GND','GP6','GP7','GP8','GP9','GND','GP10','GP11','GP12','GP13','GND','GP14','GP15'];
+  const RIGHT_NAMES = ['GP16','GP17','GND','GP18','GP19','GP20','GP21','GND','GP22','RUN','GP26','GP27','GND','GP28','VREF','3V3','3V3_EN','GND','VSYS','VBUS'];
+  const pinName = n => n <= 20 ? LEFT_NAMES[n - 1] : RIGHT_NAMES[n - 21];
+  // Terminais do switch MX vistos de cima: sinal e GND
+  const SIG = [-3.81, 2.54], GNDP = [2.54, 5.08];
+  const SLACK = 100; // mm de folga para abrir a tampa
+  const CABLE = { x: 32, y: D / 2 };
+  const TIE_L = [-30, 47.5], TIE_R = [6, -6], TIE_N64 = [32, 48.5];
+
+  // ---------- desenho ----------
+  const svg = document.getElementById('svg');
+  const NS = 'http://www.w3.org/2000/svg';
+  let mirror = false;
+  const X = x => 130 + (mirror ? -x : x);
+  const Y = y => 84 - y;
+  const P = (x, y) => `${X(x).toFixed(2)},${Y(y).toFixed(2)}`;
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+  function el(tag, attrs, parent = svg, text) {
+    if (typeof parent === 'string') { text = parent; parent = svg; }
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  }
+  // polilinha com cantos arredondados (raio r, em mm)
+  function rounded(pts, r = 3) {
+    let d = `M${P(...pts[0])}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+      const l1 = Math.hypot(x1 - x0, y1 - y0), l2 = Math.hypot(x2 - x1, y2 - y1);
+      const rr = Math.min(r, l1 / 2, l2 / 2);
+      const a = [x1 - (x1 - x0) / l1 * rr, y1 - (y1 - y0) / l1 * rr];
+      const b = [x1 + (x2 - x1) / l2 * rr, y1 + (y2 - y1) / l2 * rr];
+      d += ` L${P(...a)} Q${P(x1, y1)} ${P(...b)}`;
+    }
+    return d + ` L${P(...pts[pts.length - 1])}`;
+  }
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+
+  // Rotas: mão esquerda sobe até a altura do pino e entra pela esquerda;
+  // mão direita desce para uma pista sob a frente do Pico e sobe pela esquerda.
+  function routeFor(k) {
+    const s = add([k.x, k.y], SIG);
+    const [px, py] = pinXY(k.pin);
+    if (k.side === 'L') {
+      if (k.id === 'START') {
+        // pela borda esquerda e pela frente, longe dos direcionais
+        return [s, [-109, s[1]], [-109, -14], [-23, -14], [-23, py], [px, py]];
+      }
+      const lane = { CIMA: -26.5, BAIXO: -28, ESQUERDA: -29.5, DIREITA: -31 }[k.id];
+      return k.id === 'CIMA'
+        ? [s, [s[0] - 6, s[1] + 6], [lane, s[1] + 6], [lane, py], [px, py]]
+        : [s, [s[0], py], [px, py]];
+    }
+    const order = ['A','B','Z','L','R','C_CIMA','C_BAIXO','C_ESQUERDA','C_DIREITA'];
+    const r = order.indexOf(k.id), n = order.length;
+    const laneY = 7 - (n - 1 - r) * 1.15;      // pista entre as fileiras de cima e de baixo
+    const lowY  = laneY - 8.5;                  // desce para o vão entre B e A
+    const turnX = -12 - (n - 1 - r) * 1.0;
+    if (k.id === 'A' || k.id === 'B') return [s, [s[0], lowY], [turnX, lowY], [turnX, py], [px, py]];
+    if (k.id === 'Z') return [s, [s[0], -36], [23.5, -36], [23.5, lowY], [turnX, lowY], [turnX, py], [px, py]];
+    return [s, [s[0], laneY], [31, laneY], [22.5, lowY], [turnX, lowY], [turnX, py], [px, py]];
+  }
+
+  function gndChain(ids) { return ids.map(id => { const k = KEYS.find(q => q.id === id); return add([k.x, k.y], GNDP); }); }
+
+  const wiresMeta = [];
+
+  function draw() {
+    svg.innerHTML = '';
+    const ink = css('--ink'), muted = css('--muted'), gnd = css('--gnd');
+    const defs = el('defs', {});
+    const pat = el('pattern', { id: 'hatch', width: 2, height: 2, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+    el('line', { x1: 0, y1: 0, x2: 0, y2: 2, stroke: css('--case-edge'), 'stroke-width': .35, opacity: .5 }, pat);
+
+    // caixa
+    el('rect', { x: X(mirror ? W / 2 : -W / 2), y: Y(D / 2), width: W, height: D, rx: R, fill: css('--case'), stroke: css('--case-edge'), 'stroke-width': .8 });
+    el('rect', { x: X(mirror ? W / 2 - WALL : -W / 2 + WALL), y: Y(D / 2 - WALL), width: W - 2 * WALL, height: D - 2 * WALL, rx: R - WALL, fill: 'none', stroke: css('--case-edge'), 'stroke-width': .3, 'stroke-dasharray': '1.5 1.2' });
+    // orientação
+    el('text', { x: X(0), y: Y(D / 2) - 3, 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 3.2, fill: muted }, 'FUNDO DA CAIXA (traseira) · USB e cabo N64');
+    el('text', { x: X(0), y: Y(-D / 2) + 6, 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 3.2, fill: muted }, 'FRENTE (lado do jogador)');
+
+    // aberturas traseiras
+    el('rect', { x: X(0) - 6, y: Y(D / 2) - 1.2, width: 12, height: 3.6, fill: css('--bg'), stroke: muted, 'stroke-width': .35 });
+    el('text', { x: X(0), y: Y(D / 2) + 6.5, 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 2.6, fill: muted }, 'micro-USB');
+    el('circle', { cx: X(CABLE.x), cy: Y(CABLE.y), r: 3.5, fill: css('--bg'), stroke: muted, 'stroke-width': .35 });
+
+    // Pico
+    const g = el('g', {});
+    el('rect', { x: X(mirror ? PICO.w / 2 : -PICO.w / 2), y: Y(PICO.cy + PICO.l / 2), width: PICO.w, height: PICO.l, rx: 1.2, fill: css('--pcb'), opacity: .95 }, g);
+    el('rect', { x: X(0) - 4, y: Y(PICO.cy + PICO.l / 2) - 1, width: 8, height: 5.5, rx: .6, fill: '#B9C1BD' }, g);
+    el('rect', { x: X(0) - 3.5, y: Y(33) - 3.5, width: 7, height: 7, fill: '#0E1512' }, g);
+    el('text', { x: X(0), y: Y(33) + 1, 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 1.8, fill: '#9FB3A8' }, 'RP2040', g);
+    el('text', { x: X(0), y: Y(20), 'text-anchor': 'middle', 'font-family': css('--font-display'), 'font-weight': 600, 'font-size': 3, fill: css('--pcb-ink') }, 'PICO', g);
+    const used = new Set([...KEYS.map(k => k.pin), 3, 28, 23, 24, 36]);
+    for (let n = 1; n <= 40; n++) {
+      const [x, y] = pinXY(n);
+      el('circle', { cx: X(x), cy: Y(y), r: .75, fill: used.has(n) ? '#F2D48A' : '#7FA592', stroke: '#0E1512', 'stroke-width': .2 }, g);
+    }
+
+    // switches + keycaps
+    for (const k of KEYS) {
+      el('circle', { cx: X(k.x), cy: Y(k.y), r: 12, fill: 'none', stroke: muted, 'stroke-width': .25, 'stroke-dasharray': '1 1', opacity: .7 });
+      el('rect', { x: X(k.x) - 7, y: Y(k.y) - 7, width: 14, height: 14, rx: 1, fill: css('--panel'), stroke: ink, 'stroke-width': .45 });
+      el('text', { x: X(k.x), y: Y(k.y) + 1.3, 'text-anchor': 'middle', 'font-family': css('--font-display'), 'font-weight': 700, 'font-size': k.lab.length > 3 ? 2.6 : 3.8, fill: ink }, k.lab);
+    }
+
+    // GND em corrente (duas)
+    const gL = gndChain(['CIMA','DIREITA','BAIXO','ESQUERDA','START']);
+    const p3 = pinXY(3);
+    const leftG = [...gL, [gL[gL.length - 1][0], 58.5], [-20, 58.5], [-20, p3[1]], p3];
+    const gR = gndChain(['Z','A','C_BAIXO','C_DIREITA','R','L','C_CIMA','C_ESQUERDA','B']);
+    const p28 = pinXY(28);
+    const rightG = [...gR, [gR[gR.length - 1][0], p28[1]], p28];
+    const gndPaths = [];
+    for (const [pts, label] of [[leftG, 'GND esquerdo'], [rightG, 'GND direito']]) {
+      const d = pts.map((p, i) => (i ? 'L' : 'M') + P(...p)).join(' ');
+      gndPaths.push(el('path', { d, fill: 'none', stroke: gnd, 'stroke-width': .7, 'stroke-dasharray': '2.2 1.1', 'stroke-linejoin': 'round', class: 'wire', 'data-id': label }));
+    }
+
+    // fios de sinal
+    wiresMeta.length = 0;
+    for (const k of KEYS) {
+      const pts = routeFor(k);
+      const path = el('path', { d: rounded(pts, 2.5), fill: 'none', stroke: COLORS[k.g].c, 'stroke-width': .85, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'wire', 'data-id': k.id });
+      wiresMeta.push({ k, len: path.getTotalLength() });
+      const s = add([k.x, k.y], SIG);
+      el('circle', { cx: X(s[0]), cy: Y(s[1]), r: .9, fill: COLORS[k.g].c, stroke: ink, 'stroke-width': .2 });
+      const gpt = add([k.x, k.y], GNDP);
+      el('circle', { cx: X(gpt[0]), cy: Y(gpt[1]), r: .9, fill: gnd, stroke: ink, 'stroke-width': .2 });
+    }
+
+    // cabo N64: GND (23) e DATA (24) até a saída traseira
+    const p23 = pinXY(23), p24 = pinXY(24);
+    const n64d = [p24, [15.5, p24[1]], [15.5, 46.8], [CABLE.x - .7, 46.8], [CABLE.x - .7, CABLE.y]];
+    const n64g = [p23, [17, p23[1]], [17, 45.3], [CABLE.x + .7, 45.3], [CABLE.x + .7, CABLE.y]];
+    const dPath = el('path', { d: rounded(n64d, 2), fill: 'none', stroke: COLORS.data.c, 'stroke-width': .85, 'stroke-linejoin': 'round', class: 'wire', 'data-id': 'N64_DATA' });
+    const gPath = el('path', { d: rounded(n64g, 2), fill: 'none', stroke: gnd, 'stroke-width': .7, 'stroke-dasharray': '2.2 1.1', class: 'wire', 'data-id': 'N64_GND' });
+    // +3,3 V isolado
+    el('line', { x1: X(CABLE.x + 4), y1: Y(CABLE.y - 1), x2: X(CABLE.x + 9), y2: Y(CABLE.y - 6), stroke: '#E07A00', 'stroke-width': .8 });
+    el('text', { x: X(CABLE.x + 10), y: Y(CABLE.y - 8), 'font-family': css('--font-mono'), 'font-size': 2.5, fill: '#E07A00', 'text-anchor': mirror ? 'end' : 'start' }, '+3,3 V: isolado');
+
+    // abraçadeiras
+    for (const t of [TIE_L, TIE_R, TIE_N64]) {
+      el('rect', { x: X(t[0]) - 1.4, y: Y(t[1]) - 1.4, width: 2.8, height: 2.8, transform: `rotate(45 ${X(t[0])} ${Y(t[1])})`, fill: css('--bg'), stroke: ink, 'stroke-width': .4 });
+    }
+
+    // rótulos dos pinos usados
+    const lab = (n, txt, color) => {
+      const [x, y] = pinXY(n);
+      const left = (x < 0) !== mirror;
+      el('text', { x: X(x) + (left ? -1.6 : 1.6) * (mirror ? -1 : 1) * (mirror ? -1 : 1), y: Y(y) + .8, 'text-anchor': left ? 'end' : 'start', 'font-family': css('--font-mono'), 'font-size': 1.9, fill: color || muted, 'font-weight': 600 }, txt);
+    };
+    for (const n of [3, 23, 24, 28]) lab(n, `${n}·${pinName(n)}`);
+
+    // título dos feixes
+    el('text', { x: X(-60), y: Y(-52), 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 2.8, fill: muted }, mirror ? 'MÃO ESQUERDA (fica à direita nesta vista)' : 'MÃO ESQUERDA');
+    el('text', { x: X(62), y: Y(-52), 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 2.8, fill: muted }, mirror ? 'MÃO DIREITA (fica à esquerda nesta vista)' : 'MÃO DIREITA');
+
+    // escala
+    const sx = mirror ? -110 : 80;
+    el('line', { x1: X(sx), y1: Y(-58), x2: X(sx) + 20, y2: Y(-58), stroke: muted, 'stroke-width': .4 });
+    el('text', { x: X(sx) + 10, y: Y(-58) - 1.5, 'text-anchor': 'middle', 'font-family': css('--font-mono'), 'font-size': 2.3, fill: muted }, '20 mm');
+
+    // comprimentos dos GND / N64
+    wiresMeta.push({ special: 'GND esquerdo', len: gndPaths[0].getTotalLength(), pin: 3 });
+    wiresMeta.push({ special: 'GND direito', len: gndPaths[1].getTotalLength(), pin: 28 });
+    wiresMeta.push({ special: 'N64 DATA', len: dPath.getTotalLength(), pin: 24, color: COLORS.data.c });
+    wiresMeta.push({ special: 'N64 GND', len: gPath.getTotalLength(), pin: 23 });
+  }
+
+  function table() {
+    const tb = document.getElementById('tbody');
+    tb.innerHTML = '';
+    const gndColor = css('--gnd');
+    const rows = wiresMeta.slice().sort((a, b) => (a.k ? a.k.pin : a.pin) - (b.k ? b.k.pin : b.pin));
+    let total = 0;
+    for (const w of rows) {
+      const cm = Math.ceil((w.len + SLACK) / 10) / 1; // em cm, arredondado para cima
+      total += cm;
+      const tr = document.createElement('tr');
+      if (w.k) {
+        tr.dataset.id = w.k.id;
+        tr.innerHTML = `<td><span class="dot" style="background:${COLORS[w.k.g].c}"></span>${COLORS[w.k.g].name}</td>
+          <td>${w.k.id.replace('_', ' ')}</td><td class="mono">${pinName(w.k.pin)} · pino ${w.k.pin}</td><td class="mono">${cm} cm</td>`;
+      } else {
+        const isG = w.special.includes('GND');
+        tr.dataset.id = w.special === 'N64 DATA' ? 'N64_DATA' : w.special === 'N64 GND' ? 'N64_GND' : w.special;
+        const from = w.special.startsWith('N64') ? 'cabo da extensão N64' : (w.special.includes('esquerdo') ? 'corrente: ▲ ▶ ▼ ◀ START' : 'corrente: Z A C▼ C▶ R L C▲ C◀ B');
+        tr.innerHTML = `<td><span class="dot" style="background:${isG ? gndColor : w.color}"></span>${isG ? 'Preto' : 'Roxo'}</td>
+          <td>${w.special}<br><span style="color:var(--muted);font-size:12px">${from}</span></td><td class="mono">${pinName(w.pin)} · pino ${w.pin}</td><td class="mono">${cm} cm</td>`;
+      }
+      tr.addEventListener('mouseenter', () => highlight(tr.dataset.id));
+      tr.addEventListener('mouseleave', () => highlight(null));
+      tb.appendChild(tr);
+    }
+    document.getElementById('tot').textContent =
+      `Total ≈ ${(total / 100).toFixed(1)} m de fio, já com ${SLACK / 10} cm de folga em cada um. Passe o mouse numa linha para destacar o fio.`;
+  }
+
+  function highlight(id) {
+    svg.classList.toggle('hl', !!id);
+    svg.querySelectorAll('.wire').forEach(p => p.classList.toggle('on', p.dataset.id === id));
+  }
+
+  function legend() {
+    const L = document.getElementById('legend');
+    const items = [['dir','Direcionais'],['a','A'],['b','B'],['c','Botões C'],['lrz','L · R · Z'],['start','Start'],['data','DATA N64']];
+    L.innerHTML = items.map(([g, t]) => `<span><i class="sw" style="background:${COLORS[g].c}"></i>${t}</span>`).join('')
+      + `<span><i class="sw dash"></i>GND (preto)</span><span>◆ abraçadeira</span><span>● sinal · ● GND no switch</span>`;
+  }
+
+  function setView(m) {
+    mirror = m;
+    document.getElementById('v-top').setAttribute('aria-pressed', String(!m));
+    document.getElementById('v-solder').setAttribute('aria-pressed', String(m));
+    document.getElementById('view-title').textContent = m ? 'Vista de solda · tampa virada na bancada' : 'Vista de cima · tampa transparente';
+    document.getElementById('view-note').innerHTML = m
+      ? '<b>Use esta para soldar:</b> é o que você vê com a tampa de cabeça para baixo. Esquerda e direita trocam de lado.'
+      : 'Posição real dos botões, como quem joga vê. Os fios estão na parte de baixo da tampa.';
+    draw(); table();
+  }
+
+  document.getElementById('v-top').addEventListener('click', () => setView(false));
+  document.getElementById('v-solder').addEventListener('click', () => setView(true));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => setView(mirror));
+  new MutationObserver(() => setView(mirror)).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  legend();
+  setView(false);
+})();
+</script>

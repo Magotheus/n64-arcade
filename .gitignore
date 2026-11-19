@@ -1,0 +1,17 @@
+# Pastas de build (o build real fica em %USERPROFILE%\.pico-sdk\build)
+build/
+_deps/
+
+# Cópia enxuta para outra máquina — redundante no repositório
+kit_notebook/
+
+# Placa antiga das 14 teclas sem legenda (substituída pelas placas por cor)
+caixa/impressao/teclas_14x_A1.3mf
+
+# Arquivos temporários
+caixa/result.json
+*.tmp
+~$*
+desktop.ini
+Thumbs.db
+.vscode/

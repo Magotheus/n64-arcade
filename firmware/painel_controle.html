@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel N64 Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Visual único (escuro, cara de painel de fliperama) — escolhido de propósito. */
+:root {
+  --bg: #0E1211;
+  --panel: #161C1A;
+  --case: #22292A;
+  --case-edge: #3A4644;
+  --ink: #E6EEEA;
+  --muted: #8C9A94;
+  --rule: #2A3432;
+  --ok: #3FD47A;
+  --warn: #F2B53A;
+  --bad: #FF5A5F;
+  --purple: #B57BE8;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-mono); }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-left, 0px)) 28px; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 3vw, 32px); margin: 0; letter-spacing: .03em; }
+h1 span { color: #D42A2A; }
+.status { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; }
+.pill { border: 1px solid var(--rule); border-radius: 999px; padding: 5px 12px; background: var(--panel); white-space: nowrap; }
+.pill b { font-weight: 600; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; background: var(--muted); vertical-align: 0; }
+.dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.dot.off { background: var(--bad); }
+button { font: 600 14px var(--font-display); letter-spacing: .04em; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; background: #D42A2A; color: #fff; }
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
+button:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 980px) { .main { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 14px; min-width: 0; }
+.card h2 { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.board svg { width: 100%; height: auto; display: block; }
+.key circle.cap { transition: transform .05s, filter .05s; transform-box: fill-box; transform-origin: center; }
+.key.down circle.cap { filter: brightness(1.55) drop-shadow(0 0 5px rgba(255,255,255,.55)); transform: scale(.94); }
+.key.down circle.ring { stroke: #fff; stroke-width: 1.2; }
+.key.tested circle.ring { stroke: var(--ok); }
+.side { display: grid; gap: 16px; }
+.stick { display: flex; gap: 14px; align-items: center; }
+.stick svg { width: 150px; height: 150px; flex: none; }
+.stick .vals { font-size: 14px; line-height: 1.8; }
+.check { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; font-size: 12.5px; }
+.check div { border: 1px solid var(--rule); border-radius: 6px; padding: 5px 7px; color: var(--muted); }
+.check div.ok { color: var(--ink); border-color: color-mix(in srgb, var(--ok) 60%, transparent); }
+.check div.ok::before { content: "✓ "; color: var(--ok); }
+.prog { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.prog b { color: var(--ok); }
+.log { height: 280px; overflow-y: auto; font-size: 13px; line-height: 1.55; }
+.log .ap { color: #7FD3FF; }
+.log .so { color: var(--muted); }
+.log .sim { color: var(--warn); }
+.log .pak { color: var(--purple); }
+.log .sys { color: var(--muted); font-style: italic; }
+.note { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.note b { color: var(--ink); }
+.err { color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Painel <span>N64</span> Arcade</h1>
+    <div class="status">
+      <span class="pill"><span class="dot" id="dot"></span><b id="st">Desconectado</b></span>
+      <span class="pill">Joybus: <b id="jb">—</b></span>
+      <span class="pill">Acessório (leit./escr.): <b id="pak">—</b></span>
+      <span class="pill" id="consPill"><span class="dot" id="consDot"></span>Console: <b id="cons">—</b></span>
+      <button id="btnCon">Conectar ao Pico</button>
+      <button class="ghost" id="btnReset">Zerar teste</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="card board">
+      <h2>Controle — vista de cima</h2>
+      <svg id="svg" viewBox="0 0 260 150" role="img" aria-label="Controle com os 14 botões"></svg>
+    </section>
+
+    <div class="side">
+      <section class="card">
+        <h2>Direcional (stick enviado ao N64)</h2>
+        <div class="stick">
+          <svg viewBox="-100 -100 200 200">
+            <rect x="-96" y="-96" width="192" height="192" rx="14" fill="#101615" stroke="#2A3432"/>
+            <line x1="-96" y1="0" x2="96" y2="0" stroke="#2A3432"/><line x1="0" y1="-96" x2="0" y2="96" stroke="#2A3432"/>
+            <circle r="80" fill="none" stroke="#2A3432" stroke-dasharray="4 4"/>
+            <circle id="stickDot" r="11" fill="#E6EEEA"/>
+          </svg>
+          <div class="vals">X = <b id="sx">0</b><br>Y = <b id="sy">0</b><br>D-pad: <b id="dp">—</b></div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Checklist dos 14 botões</h2>
+        <div class="check" id="check"></div>
+        <div class="prog" id="prog"></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Eventos</h2>
+    <div class="log" id="log"></div>
+  </section>
+
+  <p class="note" id="help">
+    Use o <b>Chrome</b> ou o <b>Edge</b>. Feche o <code>monitor.ps1</code> (ou o Thonny) antes de conectar — só um programa por vez pode usar a porta.
+    Clique em <b>Conectar ao Pico</b> e escolha a porta do Pico na lista. Depois da primeira vez, a página reconecta sozinha.
+  </p>
+</div>
+
+<script>
+(() => {
+  // Mesmas posições do n64_arcade_hitbox.scad (mm, centro da caixa = 0,0)
+  const KEYS = [
+    { id: 'ESQUERDA',   x: -92, y:   8, c: '#4A4F55', leg: 'tri', ang: 90 },
+    { id: 'BAIXO',      x: -65, y:  13, c: '#4A4F55', leg: 'tri', ang: 180 },
+    { id: 'DIREITA',    x: -38, y:   6, c: '#4A4F55', leg: 'tri', ang: -90 },
+    { id: 'CIMA',       x: -19, y: -30, c: '#4A4F55', leg: 'tri', ang: 0 },
+    { id: 'B',          x:  18, y:   8, c: '#2E9E44', leg: 'B' },
+    { id: 'A',          x:  14, y: -18, c: '#2456C8', leg: 'A' },
+    { id: 'C_ESQUERDA', x:  45, y:  16, c: '#E2B400', leg: 'C', ang: 90 },
+    { id: 'C_CIMA',     x:  72, y:  16, c: '#E2B400', leg: 'C', ang: 0 },
+    { id: 'C_BAIXO',    x:  42, y: -10, c: '#E2B400', leg: 'C', ang: 180 },
+    { id: 'C_DIREITA',  x:  69, y: -10, c: '#E2B400', leg: 'C', ang: -90 },
+    { id: 'L',          x:  99, y:  12, c: '#26292C', leg: 'L' },
+    { id: 'R',          x:  96, y: -14, c: '#26292C', leg: 'R' },
+    { id: 'Z',          x:  23, y: -45, c: '#26292C', leg: 'Z' },
+    { id: 'START',      x: -99, y:  45, c: '#D42A2A', leg: 'START' },
+  ];
+  const NOMES = { ESQUERDA: '◀', BAIXO: '▼', DIREITA: '▶', CIMA: '▲', C_ESQUERDA: 'C◀', C_CIMA: 'C▲', C_BAIXO: 'C▼', C_DIREITA: 'C▶' };
+  const nome = id => NOMES[id] || id;
+  const DPAD = { '^': 'CIMA', 'v': 'BAIXO', '<': 'ESQUERDA', '>': 'DIREITA' };
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('svg');
+  const X = x => 130 + x, Y = y => 75 - y;
+  const el = (t, a, p = svg) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+  const tri = (cx, cy, s, ang, p, fill) => {
+    const pts = [[0, -s * .55], [-s * .52, s * .38], [s * .52, s * .38]].map(([px, py]) => {
+      const r = -ang * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r);
+      return `${(cx + px * c - py * sn).toFixed(2)},${(cy + px * sn + py * c).toFixed(2)}`;
+    }).join(' ');
+    el('polygon', { points: pts, fill }, p);
+  };
+
+  // caixa
+  el('rect', { x: 10, y: 11, width: 240, height: 128, rx: 10, fill: 'var(--case)', stroke: 'var(--case-edge)', 'stroke-width': .8 });
+  const txt = (x, y, s, t, a = {}) => { const e = el('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-family': 'Chakra Petch, Segoe UI, sans-serif', 'font-weight': 700, 'font-size': s, ...a }); e.textContent = t; return e; };
+  txt(175, 30, 6, 'N64 ARCADE', { fill: '#3A4644', 'letter-spacing': '.6' });
+
+  const nodes = {};
+  for (const k of KEYS) {
+    const g = el('g', { class: 'key', 'data-id': k.id });
+    el('circle', { class: 'ring', cx: X(k.x), cy: Y(k.y), r: 13, fill: 'none', stroke: '#3A4644', 'stroke-width': .6 }, g);
+    el('circle', { class: 'cap', cx: X(k.x), cy: Y(k.y), r: 12, fill: k.c }, g);
+    const ink = k.c === '#E2B400' ? '#5A4600' : 'rgba(255,255,255,.88)';
+    if (k.leg === 'tri') tri(X(k.x), Y(k.y), 10, k.ang, g, ink);
+    else if (k.leg === 'C') { txt(X(k.x) - 3, Y(k.y) + .3, 8.5, 'C', { fill: ink }).parentNode === g || g.appendChild(svg.lastChild); tri(X(k.x) + 5, Y(k.y), 5.2, k.ang, g, ink); }
+    else if (k.leg === 'START') { const t = txt(X(k.x), Y(k.y) + .2, 3.6, 'START', { fill: ink }); g.appendChild(t); }
+    else { const t = txt(X(k.x), Y(k.y) + .4, 10, k.leg, { fill: ink }); g.appendChild(t); }
+    nodes[k.id] = g;
+  }
+
+  // checklist
+  const check = document.getElementById('check');
+  const testados = new Set();
+  const chk = {};
+  for (const k of KEYS) { const d = document.createElement('div'); d.textContent = nome(k.id); check.appendChild(d); chk[k.id] = d; }
+  const prog = document.getElementById('prog');
+  const atualizaProg = () => {
+    prog.innerHTML = testados.size === KEYS.length
+      ? '<b>14/14 — todos os botões funcionando</b>'
+      : `${testados.size}/14 testados · faltam: ${KEYS.filter(k => !testados.has(k.id)).map(k => nome(k.id)).join(' ')}`;
+  };
+  atualizaProg();
+
+  // log
+  const logEl = document.getElementById('log');
+  const log = (cls, msg) => {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.textContent = `${new Date().toLocaleTimeString('pt-BR')}  ${msg}`;
+    logEl.prepend(d);
+    while (logEl.childNodes.length > 300) logEl.lastChild.remove();
+  };
+
+  // estado
+  let anterior = new Set();
+  const stickDot = document.getElementById('stickDot');
+  const sx = document.getElementById('sx'), sy = document.getElementById('sy'), dp = document.getElementById('dp');
+  let ultPak = null;
+
+  // Diagnóstico da linha DATA (firmware com "[DIAG] ...")
+  let ultDiag = '';
+  function diag(l) {
+    const m = l.match(/DATA=(ALTA|BAIXA) pulsos\/s=(\d+) cmd_info=(\d+) cmd_ler=(\d+) cmd_reset=(\d+) cmd_outros=(\d+)/);
+    if (!m) return;
+    const [, nivel, pps, info, ler, reset, outros] = m;
+    const cmds = +info + +ler + +reset + +outros;
+    const el = document.getElementById('cons'), d = document.getElementById('consDot');
+    let txt, cls;
+    if (+pps > 0 && +ler > 0) { txt = `conversando (${pps} pulsos/s, ${ler} leituras)`; cls = 'on'; }
+    else if (+pps > 0) { txt = `sinal chega (${pps}/s) mas sem leitura — cmd ${cmds}`; cls = ''; }
+    else if (nivel === 'ALTA') { txt = 'linha ALTA, sem consultas'; cls = ''; }
+    else { txt = 'sem sinal (DATA BAIXA)'; cls = 'off'; }
+    el.textContent = txt; d.className = 'dot ' + cls;
+    // registra no log só quando o estado muda (sem sinal / linha alta / sinal sem leitura / conversando)
+    if (txt.split(' (')[0] !== ultDiag) {
+      log('pak', `diagnóstico: DATA ${nivel} · ${pps} pulsos/s · info ${info} · leituras ${ler} · reset ${reset} · outros ${outros}`);
+      ultDiag = txt.split(' (')[0];
+    }
+  }
+
+  function linha(l) {
+    l = l.trim();
+    if (!l) return;
+    if (l.startsWith('[DIAG]')) { diag(l); return; }
+    const m0 = l.match(/joybus_init=(-?\d+)(?:.*pak_read=(\d+), pak_write=(\d+))?/);
+    if (l.startsWith('[N64') && m0) {
+      document.getElementById('jb').textContent = m0[1] === '0' ? 'OK (GP18)' : `erro ${m0[1]}`;
+      if (m0[2] !== undefined) {
+        const p = `${m0[2]}/${m0[3]}`;
+        document.getElementById('pak').textContent = p;
+        if (ultPak !== null && p !== ultPak) log('pak', `console consultou acessório: ${p}`);
+        ultPak = p;
+      }
+      return;
+    }
+    const m = l.match(/X=\s*(-?\d+)\s+Y=\s*(-?\d+)\s+DPAD=(\S*)\s*\|(.*)$/);
+    if (!m) return;
+    const x = +m[1], y = +m[2];
+    const atual = new Set();
+    for (const ch of m[3]) if (DPAD[ch]) atual.add(DPAD[ch]);
+    for (const n of m[4].trim().split(/\s+/)) if (n && nodes[n]) atual.add(n);
+
+    stickDot.setAttribute('cx', x); stickDot.setAttribute('cy', -y);
+    sx.textContent = x; sy.textContent = y;
+    dp.textContent = m[3] ? [...m[3]].map(c => ({ '^': '▲', 'v': '▼', '<': '◀', '>': '▶' })[c]).join(' ') : '—';
+
+    for (const id of atual) if (!anterior.has(id)) {
+      log('ap', `APERTOU  ${nome(id)}`);
+      if (!testados.has(id)) { testados.add(id); chk[id].classList.add('ok'); nodes[id].classList.add('tested'); atualizaProg(); }
+    }
+    for (const id of anterior) if (!atual.has(id)) log('so', `soltou   ${nome(id)}`);
+    if (atual.size >= 2) log('sim', `ao mesmo tempo: ${[...atual].map(nome).join(' + ')}`);
+    for (const id in nodes) nodes[id].classList.toggle('down', atual.has(id));
+    anterior = atual;
+  }
+
+  // serial
+  const dot = document.getElementById('dot'), st = document.getElementById('st'), btn = document.getElementById('btnCon');
+  const setSt = (txt, cls) => { st.textContent = txt; dot.className = 'dot ' + (cls || ''); };
+  let porta = null, leitor = null;
+
+  async function abrir(p) {
+    porta = p;
+    try {
+      await porta.open({ baudRate: 115200 });
+    } catch (e) {
+      setSt('Porta ocupada', 'off');
+      log('sys err', 'Não consegui abrir a porta. Feche o monitor.ps1 / Thonny e tente de novo.');
+      porta = null; return;
+    }
+    try { await porta.setSignals({ dataTerminalReady: true }); } catch {}
+    setSt('Conectado', 'on');
+    btn.textContent = 'Desconectar';
+    log('sys', 'Pico conectado — aperte os botões.');
+    const dec = new TextDecoderStream();
+    const fim = porta.readable.pipeTo(dec.writable).catch(() => {});
+    leitor = dec.readable.getReader();
+    let buf = '';
+    try {
+      while (true) {
+        const { value, done } = await leitor.read();
+        if (done) break;
+        buf += value;
+        let i;
+        while ((i = buf.indexOf('\n')) >= 0) { linha(buf.slice(0, i)); buf = buf.slice(i + 1); }
+      }
+    } catch {}
+    try { leitor.releaseLock(); } catch {}
+    await fim;
+    try { await porta.close(); } catch {}
+    porta = null; leitor = null;
+    for (const id in nodes) nodes[id].classList.remove('down');
+    anterior = new Set();
+    setSt('Desconectado', 'off');
+    btn.textContent = 'Conectar ao Pico';
+    log('sys', 'Pico desconectado.');
+  }
+
+  if (!('serial' in navigator)) {
+    setSt('Navegador sem suporte', 'off');
+    btn.disabled = true;
+    document.getElementById('help').innerHTML = '<span class="err">Este navegador não tem acesso à porta serial. Abra esta página no <b>Chrome</b> ou no <b>Edge</b>.</span>';
+  } else {
+    btn.addEventListener('click', async () => {
+      if (porta) { try { await leitor.cancel(); } catch {} return; }
+      try {
+        const p = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x2E8A }] });
+        abrir(p);
+      } catch { log('sys', 'Nenhuma porta escolhida.'); }
+    });
+    // reconecta sozinho em portas já autorizadas
+    navigator.serial.addEventListener('connect', e => { if (!porta) { log('sys', 'Pico detectado, conectando…'); setTimeout(() => abrir(e.target), 800); } });
+    navigator.serial.getPorts().then(ps => { if (ps.length && !porta) abrir(ps[0]); });
+  }
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    testados.clear();
+    for (const id in chk) { chk[id].classList.remove('ok'); nodes[id].classList.remove('tested'); }
+    logEl.innerHTML = '';
+    atualizaProg();
+  });
+})();
+</script>
+</body>
+</html>
