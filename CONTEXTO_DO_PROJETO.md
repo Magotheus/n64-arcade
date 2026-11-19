@@ -11,6 +11,11 @@
 > `README.md` (índice), `documentacao/Dossie_Tecnico_N64_Arcade_V1_Final.docx`,
 > este contexto e os relatos `SESSAO_*.md`.
 >
+> **GitHub (público, CC BY-NC 4.0):** https://github.com/Magotheus/n64-arcade
+> — esta pasta é o repositório (`origin/main`). Logo Indião Retro Games: todos
+> os direitos reservados. `kit_notebook/` fica fora (.gitignore). Usar o Git em
+> uma máquina por vez (a pasta sincroniza pelo OneDrive).
+>
 > Histórico: a falha intermitente de reconhecimento foi resolvida na tarde de
 > 19/11 (receptor do Pico desalinhado 1 bit depois que o console desliga; o
 > firmware atual corrige). Relatos: `SESSAO_2026-11-19_TESTE_N64.md` (manhã,
